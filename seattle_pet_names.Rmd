@@ -1,0 +1,114 @@
+---
+title: "Seattle Pet Names"
+author: "Alejandra Gerosa"
+date: "August 24, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(devtools)
+library(choroplethrZip)
+library(ggmap)
+register_google(key = Sys.getenv("google_maps_key"))
+```
+
+## Tidy Tuesday - Seattle Pet names
+
+Taking a first stab at Tidy Tuesday!
+
+```{r load}
+seattle_pets <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-26/seattle_pets.csv")
+
+```
+
+## Explore
+Take a look:
+
+Let's make top 10 tables:
+
+```{r explore}
+summary(seattle_pets)
+table(seattle_pets$zip_code)
+
+top_ten_names <- seattle_pets %>%
+  group_by(animals_name) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(10)
+
+top_ten_primary_breed <- seattle_pets %>%
+  group_by(primary_breed) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(10)
+
+top_ten_secondary_breed <- seattle_pets %>%
+  group_by(secondary_breed) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(10)
+
+top_ten_zip_code <- seattle_pets %>%
+  group_by(zip_code) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(10)
+
+```
+
+Let's do a chart
+
+```{r plots}
+
+ggplot(top_ten_names, aes(animals_name, count)) +
+  geom_col()
+
+
+```
+
+## Try a map
+
+First I try a choropleth because that's where google landed me. 
+
+```{r map}
+for_map <- seattle_pets %>%
+  group_by(region = zip_code) %>%
+  summarize(value = n())
+
+for_map %>% 
+  filter(region == "98115") 
+zip.map %>%
+  filter(region == "98115")
+
+
+#%>% 
+#  zip_choropleth(county_zoom = 53055)
+
+
+```
+
+Something isn't working *but* the choropleths package does have exactly what I needed: a way to match zipcodes to a lat-long pair. So, first I need to add that information to my dataset.
+
+```{r latlong}
+sp_geo <- seattle_pets %>% 
+  left_join(select(zip.map, long, lat, region), by = c("zip_code" = "region")) %>%
+  group_by(license_issue_date, license_number, animals_name, species, primary_breed, secondary_breed, zip_code) %>% 
+  summarize(long = mean(long, na.rm = TRUE), lat = mean(lat,na.rm = TRUE))
+
+```
+And now we make a map
+
+```{r map}
+seattle <- c(lon = mean(sp_geo$long, na.rm = TRUE), lat = mean(sp_geo$lat, na.rm = TRUE))
+seattle_map <- get_map(seattle, zoom = 12)
+sp_for_map <- sp_geo %>%
+  group_by(long, lat) %>% 
+  summarise(count = n())
+
+ggmap(seattle_map) +
+  geom_point(aes(long, lat, size = count), data = sp_for_map)
+
+```
