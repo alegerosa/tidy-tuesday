@@ -136,4 +136,4 @@ ggmap(seattle_map) +
   geom_text(aes(long, lat, label = top_name, size = count, color = top_name), data = sp_for_name_map) +
   theme(legend.position="none")
 
-``
+```
