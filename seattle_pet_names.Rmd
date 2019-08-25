@@ -22,6 +22,8 @@ Taking a first stab at Tidy Tuesday!
 ```{r load}
 seattle_pets <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-26/seattle_pets.csv")
 
+data(zip.map)
+
 ```
 
 ## Explore
@@ -31,7 +33,6 @@ Let's make top 10 tables:
 
 ```{r explore}
 summary(seattle_pets)
-table(seattle_pets$zip_code)
 
 top_ten_names <- seattle_pets %>%
   group_by(animals_name) %>%
@@ -57,6 +58,17 @@ top_ten_zip_code <- seattle_pets %>%
   arrange(desc(count)) %>%
   head(10)
 
+top_ten_names
+top_ten_primary_breed
+top_ten_secondary_breed
+top_ten_zip_code
+
+seattle_pets %>% group_by(animals_name) %>%
+  summarize(dogs = sum(species == "Dog"),
+            cats = sum(species == "Cat"),
+            total = dogs + cats) %>%
+  arrange(desc(total))
+
 ```
 
 Let's do a chart
@@ -73,7 +85,7 @@ ggplot(top_ten_names, aes(animals_name, count)) +
 
 First I try a choropleth because that's where google landed me. 
 
-```{r map}
+```{r choropleth}
 for_map <- seattle_pets %>%
   group_by(region = zip_code) %>%
   summarize(value = n())
@@ -103,7 +115,7 @@ And now we make a map
 
 ```{r map}
 seattle <- c(lon = mean(sp_geo$long, na.rm = TRUE), lat = mean(sp_geo$lat, na.rm = TRUE))
-seattle_map <- get_map(seattle, zoom = 12)
+seattle_map <- get_map(seattle, zoom = 12, maptype = "roadmap", color = "bw")
 sp_for_map <- sp_geo %>%
   group_by(long, lat) %>% 
   summarise(count = n())
@@ -111,4 +123,17 @@ sp_for_map <- sp_geo %>%
 ggmap(seattle_map) +
   geom_point(aes(long, lat, size = count), data = sp_for_map)
 
-```
+mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+sp_for_name_map <- sp_geo %>%
+  group_by(long, lat) %>% 
+  summarise(top_name = mode(animals_name), count = n()) 
+
+ggmap(seattle_map) +
+  geom_text(aes(long, lat, label = top_name, size = count, color = top_name), data = sp_for_name_map) +
+  theme(legend.position="none")
+
+``
