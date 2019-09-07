@@ -80,7 +80,7 @@ ram_over_time <- ggplot(ram_plot, aes(date_of_introduction, log(value), color = 
 ram_over_time + geom_jitter(alpha = 0.5, size = 5) +
   labs(x = "Year",
        title = "RAM capacity follows Moore's Law too",
-       subtitle = "RAM capacity and transistor count chow similar exponential growth over time",
+       subtitle = "RAM capacity and transistor count show similar exponential growth over time",
        caption = "@alejagerosa. Inspired by #TidyTuesday.",
        color = "") +
   theme_minimal() +
