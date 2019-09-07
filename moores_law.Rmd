@@ -1,0 +1,92 @@
+---
+title: "Moore's Law"
+author: "Alejandra Gerosa"
+date: "September 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+
+
+```
+
+## Load the data
+
+
+```{r data}
+cpu <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-03/cpu.csv")
+
+gpu <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-03/gpu.csv")
+
+ram <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-03/ram.csv")
+
+
+```
+
+## Including Plots
+
+
+```{r cpus, echo=FALSE}
+
+cpu_over_time <- ggplot(cpu, aes(date_of_introduction, log(transistor_count), size = area))
+
+cpu_over_time + geom_point(alpha = 0.4)
+
+```
+
+What about 
+
+```{r gpus, echo = FALSE}
+gpu_over_time <- ggplot(gpu, aes(date_of_introduction, log(transistor_count), size = area))
+
+
+gpu_over_time + geom_point(alpha = 0.4)
+
+```
+
+```{r ram, echo = False}
+
+ram2 <- ram %>% mutate(
+  capacity_bits = case_when(
+    bit_units == "Bits" ~ capacity_bits,
+    bit_units == "kb" ~ capacity_bits * 1024,
+    bit_units == "Mb" ~ capacity_bits * 1024^2,
+    bit_units == "Gb" ~ capacity_bits * 1024^3
+  )
+)
+
+
+ram_over_time <- ggplot(ram2, aes(date_of_introduction, log(transistor_count)))
+
+ram_over_time + geom_point(alpha = 0.4)
+
+
+ram_capacity <- ggplot(ram2, aes(date_of_introduction, log(capacity_bits)))
+
+ram_capacity + geom_point(alpha = 0.4)
+
+
+(ram_df <- select(ram2, date_of_introduction, "Transistor Count" = transistor_count, "Capacity (Bits)" = capacity_bits))
+
+ram_plot <- gather(ram_df, "measure", "value", -date_of_introduction)
+
+
+
+ram_over_time <- ggplot(ram_plot, aes(date_of_introduction, log(value), color = measure))
+
+ram_over_time + geom_jitter(alpha = 0.5, size = 5) +
+  labs(x = "Year",
+       title = "RAM capacity also follows Moore's Law",
+       subtitle = "RAM capacity and transistor count similar exponential growth over time",
+       caption = "@alejagerosa. Inspired by #TidyTuesday.",
+       color = "") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+
+
+```
