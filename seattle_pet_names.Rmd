@@ -121,7 +121,7 @@ sp_for_map <- sp_geo %>%
   summarise(count = n())
 
 ggmap(seattle_map) +
-  geom_point(aes(long, lat, size = count), data = sp_for_map)
+  geom_point(aes(long, lat, size = count), color = "deeppink", data = sp_for_map)
 
 mode <- function(x) {
   ux <- unique(x)
