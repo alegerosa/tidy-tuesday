@@ -69,7 +69,7 @@ ram_capacity <- ggplot(ram2, aes(date_of_introduction, log(capacity_bits)))
 ram_capacity + geom_point(alpha = 0.4)
 
 
-(ram_df <- select(ram2, date_of_introduction, "Transistor Count" = transistor_count, "Capacity (Bits)" = capacity_bits))
+(ram_df <- select(ram2, date_of_introduction, "Transistor Count" = transistor_count, "RAM Capacity (Bits)" = capacity_bits))
 
 ram_plot <- gather(ram_df, "measure", "value", -date_of_introduction)
 
@@ -77,8 +77,8 @@ ram_plot <- gather(ram_df, "measure", "value", -date_of_introduction)
 
 ram_over_time <- ggplot(ram_plot, aes(date_of_introduction, value, color = measure))
 
-ram_over_time + geom_jitter(alpha = 0.5, size = 5) +
-  scale_y_log10() +
+ram_over_time + geom_jitter(alpha = 0.5, size = 4) +
+  scale_y_log10(labels = scales::number_format(big.mark = ",")) +
   labs(x = NULL,
        y = NULL,
        title = "RAM capacity follows Moore's Law too",
