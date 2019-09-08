@@ -75,10 +75,12 @@ ram_plot <- gather(ram_df, "measure", "value", -date_of_introduction)
 
 
 
-ram_over_time <- ggplot(ram_plot, aes(date_of_introduction, log(value), color = measure))
+ram_over_time <- ggplot(ram_plot, aes(date_of_introduction, value, color = measure))
 
 ram_over_time + geom_jitter(alpha = 0.5, size = 5) +
-  labs(x = "Year",
+  scale_y_log10() +
+  labs(x = NULL,
+       y = NULL,
        title = "RAM capacity follows Moore's Law too",
        subtitle = "RAM capacity and transistor count show similar exponential growth over time",
        caption = "@alejagerosa. Inspired by #TidyTuesday.",
