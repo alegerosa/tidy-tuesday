@@ -74,7 +74,7 @@ commute_mode_wider %>% group_by(state) %>%
 
 There's two issues I will want to fix here, and arranging by num_cities allowed me to more easily identify them:
 1. There are different cities that have the same name. They are in different sttates, so I'll create a new variable that also includes the state, so that I can easily identify each observation.
-2. I seem to have 53 states. This is because two state names are misspelled in the originla dataframe. I'll fix these.
+2. I seem to have 53 states. This is because two state names are misspelled in the originla dataframe. I'll fix these. Also I'll add a state abbreviation and region for Washington DC.
 So I'll redo the earlier steps to account for these issues.
 
 ```{r clean}
@@ -93,6 +93,12 @@ commute_mode[commute_mode$state == "Massachusett",] <- filter(commute_mode, stat
   mutate(state = "Massachusetts",
          state_abb = "MA",
          state_region = "Northeast")
+
+commute_mode[commute_mode$state == "District of Columbia",] <- filter(commute_mode, state == "District of Columbia")  %>% 
+  mutate(state_abb = "DC",
+         state_region = "Northeast")
+
+
 summary(commute_mode)
 
 
@@ -126,13 +132,161 @@ commute_mode_wider %>% group_by(state) %>%
 ```
 
 # Additional information
-I want to add to the dataset the actual size (population) of each city. That infomation is readily available on Wikipedia's [List of United States Cities by Population](https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population) page, so I'll scrape it from there.
+I want to add to the dataset the actual size (population) of each city. That infomation is readily available on Wikipedia's [List of United States Cities by Population](https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population) page, so I'll scrape it from there. It's only available for cities with a population of at least 100,000, so that will have to do for now.
 
 ```{r scrape}
 wikipage <- read_html("https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population")
 
 additional_information <- wikipage %>% 
-  html_node( xpath = '//*[@id="mw-content-text"]/div/table[5]') %>%
+  html_node(xpath='//*[@id="mw-content-text"]/div/table[5]') %>%
   html_table(fill=TRUE)
+
+```
+
+There's a lot I would need to clean up here, but for now I'll focus on the information I need. I'll use the population figures from the 2010 census, since the commute data is from a 2008-2012 timeframe.
+
+```{r addl_cleanup}
+additional_information$`2010Census` <- as.numeric(gsub(",", "", additional_information$`2010Census`))
+cities_population <- additional_information[,1:5] %>%
+  select(city = City, state = `State[c]`, population = `2010Census`)
+cities_population <- as_tibble(cities_population)
+```
+
+Now I need to make the names on this dataframe list match the names on the original dataframe. There are some automatic fixes that will get me most of the way there, but for 11 cities there are inconsistencies that I ended up fixing manually (🤷).
+```{r names_cleanup}
+
+cities_population$city <- cities_population$city %>%
+  str_remove("\\[.*")
+
+cities_population <- cities_population %>% 
+  inner_join(unique(select(commute_mode_wider, state, state_abb))) %>% 
+  mutate(name_city_state = paste(city, "city", state_abb))
+
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Indianapolis",] <- cities_population %>% 
+  filter(city == "Indianapolis") %>% 
+  mutate(name_city_state = "Indianapolis city (balance) IN")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Honolulu",] <- cities_population %>% 
+  filter(city == "Honolulu") %>% 
+  mutate(name_city_state = "Urban Honolulu CDP HI")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Lexington",] <- cities_population %>% 
+  filter(city == "Lexington") %>% 
+  mutate(name_city_state = "Lexington-Fayette urban county KY")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Saint Paul",] <- cities_population %>% 
+  filter(city == "Saint Paul") %>% 
+  mutate(name_city_state = "St. Paul city MN")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Anchorage",] <- cities_population %>% 
+  filter(city == "Anchorage") %>% 
+  mutate(name_city_state = "Anchorage municipality AK")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Gilbert",] <- cities_population %>% 
+  filter(city == "Gilbert") %>% 
+  mutate(name_city_state = "Gilbert town AZ")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Winston–Salem",] <- cities_population %>% 
+  filter(city == "Winston–Salem") %>% 
+  mutate(name_city_state = "Winston-Salem city NC")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Boise",] <- cities_population %>% 
+  filter(city == "Boise") %>% 
+  mutate(name_city_state = "Boise City city ID")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Cary",] <- cities_population %>% 
+  filter(city == "Cary") %>% 
+  mutate(name_city_state = "Cary town NC")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+  
+cities_population[cities_population$city == "Ventura",] <- cities_population %>% 
+  filter(city == "Ventura") %>% 
+  mutate(name_city_state = "San Buenaventura (Ventura) city CA")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+
+cities_population[cities_population$city == "Davie",] <- cities_population %>% 
+  filter(city == "Davie") %>% 
+  mutate(name_city_state = "Davie town FL")
+cities_population <- cities_population %>% 
+  mutate(matches_commute_city = cities_population$name_city_state %in% commute_mode_wider$city_state)
+sum(!cities_population$matches_commute_city)
+  
+```
+
+I am finally ready to add the population information to my commute modes dataframe. Cities in the commute dataframe with populations of more than 100,000 should now have a population number.
+
+```{r match_pops}
+commute_wide_pop <- left_join(
+  commute_mode_wider,
+  select(cities_population, name_city_state, population),
+  by = c("city_state" = "name_city_state")
+)
+
+commute_wide_pop %>% group_by(city_size) %>%
+  summarize(pop_missing = sum(is.na(population)))
+
+filter(commute_wide_pop, city_size == "Medium" & is.na(population))
+filter(commute_wide_pop, city_size == "Small" & !is.na(population))
+
+```
+Two Medium sized cities are missing and ~20 small cities do have the population numbers. This is likely due to differences from the 2010 data and the 2018 projections (which are used to set the 100,000 theshold from the Wikipedia page).
+
+# Visualize
+```{r plot}
+commute_wide_pop %>% 
+  ggplot(aes(x = population, y = bike_walk, color = state_region)) +
+  geom_point(alpha = 0.4) +
+  scale_x_log10()
+
+commute_wide_pop %>% 
+  filter(city_size == "Medium") %>% 
+  ggplot(aes(x = population, y = bike_walk, color = state_region)) +
+  geom_point(alpha = 0.4)
+
+commute_wide_pop %>% 
+  ggplot(aes(x = walk, y = bike, color = state_region, size = population)) +
+  geom_point(alpha = 0.4) 
+
+
+commute_wide_pop %>% 
+  filter(city_size == "Medium") %>% 
+  ggplot(aes(x = walk, y = bike, color = state_region, size = population)) +
+  geom_point(alpha = 0.4) 
+
+
+
+
 
 ```
