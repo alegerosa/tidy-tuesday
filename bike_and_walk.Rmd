@@ -1,0 +1,138 @@
+---
+title: "Biking and Walking"
+author: "Alejandra Gerosa"
+date: "November 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+
+
+
+```
+
+## Biking and Walking Tidy Tuesday
+
+In this Tidy Tuesday experiment, I hope to:
+1. Learn to scrape data off websites
+2. Make a chart with a non-default look-and-feel
+
+# Loading the data
+
+```{r load}
+
+commute_mode <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-11-05/commute.csv")
+
+glimpse(commute_mode)
+```
+
+# Exploring and cleaning the data
+
+
+```{r reshape}
+
+commute_mode_wider <- commute_mode %>%
+  select(city, state, city_size, state_abb, state_region, mode, percent) %>% 
+  spread(mode, percent) %>%
+  rename(bike = Bike,
+         walk = Walk) %>%
+  mutate(bike_walk = bike + walk)
+
+```
+
+```{r summarize}
+
+totalize_commutes <- function(commute_df) {
+  summarize(commute_df,
+            count = n(),
+            num_cities = n_distinct(city),
+            avg_bike = mean(bike, na.rm = TRUE),
+            sd_bike = sd(bike, na.rm = TRUE),
+            has_data_bike = sum(!is.na(bike)),
+            avg_walk = mean(walk, na.rm = TRUE),
+            sd_walk = sd(walk, na.rm = TRUE),
+            has_data_walk = sum(!is.na(walk)),
+            avg_bike_walk = mean(bike_walk, na.rm = TRUE),
+            sd_bike_walk = sd(bike_walk, na.rm = TRUE),
+            has_data_bike_walk = sum(!is.na(bike_walk))
+  )
+}
+
+commute_mode_wider %>% group_by(city_size) %>% 
+  totalize_commutes() 
+commute_mode_wider %>% group_by(city) %>% 
+  totalize_commutes() %>% arrange(desc(count))
+commute_mode_wider %>% group_by(city, state) %>% 
+  totalize_commutes() %>% arrange(desc(count), city)
+commute_mode_wider %>% group_by(state) %>% 
+  totalize_commutes() %>% arrange(num_cities)
+
+```
+
+There's two issues I will want to fix here, and arranging by num_cities allowed me to more easily identify them:
+1. There are different cities that have the same name. They are in different sttates, so I'll create a new variable that also includes the state, so that I can easily identify each observation.
+2. I seem to have 53 states. This is because two state names are misspelled in the originla dataframe. I'll fix these.
+So I'll redo the earlier steps to account for these issues.
+
+```{r clean}
+
+commute_mode %>% filter(state == "Ca")
+commute_mode %>% filter(grepl("Paso", city))
+
+commute_mode[commute_mode$state == "Ca",] <- filter(commute_mode, state %in% c("Ca"))  %>% 
+  mutate(state = "California",
+         state_abb = "CA",
+         state_region = "West")
+
+commute_mode %>% filter(state == "Massachusett")
+commute_mode %>% filter(grepl("West Springfield", city))
+commute_mode[commute_mode$state == "Massachusett",] <- filter(commute_mode, state == "Massachusett")  %>% 
+  mutate(state = "Massachusetts",
+         state_abb = "MA",
+         state_region = "Northeast")
+summary(commute_mode)
+
+
+commute_mode_wider <- commute_mode %>% 
+  mutate(city_state = paste(city, state_abb)) %>%
+  select(city_state, state, city_size, state_abb, state_region, mode, percent) %>% 
+  spread(mode, percent) %>% 
+  rename(bike = Bike,
+         walk = Walk) %>%
+  mutate(bike_walk = bike + walk)
+
+
+totalize_commutes <- function(commute_df) {
+  summarize(commute_df,
+            num_cities = n_distinct(city_state),
+            avg_bike = mean(bike, na.rm = TRUE),
+            sd_bike = sd(bike, na.rm = TRUE),
+            avg_walk = mean(walk, na.rm = TRUE),
+            sd_walk = sd(walk, na.rm = TRUE),
+            avg_bike_walk = mean(bike_walk, na.rm = TRUE),
+            sd_bike_walk = sd(bike_walk, na.rm = TRUE)
+  )
+}
+
+commute_mode_wider %>% group_by(city_size) %>% 
+  totalize_commutes() 
+commute_mode_wider %>% group_by(state) %>% 
+  totalize_commutes() %>% arrange(num_cities)
+
+
+```
+
+# Additional information
+I want to add to the dataset the actual size (population) of each city. That infomation is readily available on Wikipedia's [List of United States Cities by Population](https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population) page, so I'll scrape it from there.
+
+```{r scrape}
+wikipage <- read_html("https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population")
+
+additional_information <- wikipage %>% 
+  html_node( xpath = '//*[@id="mw-content-text"]/div/table[5]') %>%
+  html_table(fill=TRUE)
+
+```
