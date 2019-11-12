@@ -9,8 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(rvest)
-
-
+library(ggridges)
+library(RColorBrewer)
+library(wesanderson)
+library(ggrepel)
 
 ```
 
@@ -268,24 +270,133 @@ Two Medium sized cities are missing and ~20 small cities do have the population 
 commute_wide_pop %>% 
   ggplot(aes(x = population, y = bike_walk, color = state_region)) +
   geom_point(alpha = 0.4) +
-  scale_x_log10()
+  scale_x_log10() +
+  facet_wrap(~state_region)
 
 commute_wide_pop %>% 
   filter(city_size == "Medium") %>% 
   ggplot(aes(x = population, y = bike_walk, color = state_region)) +
-  geom_point(alpha = 0.4)
+  geom_point(alpha = 0.4) +
+  facet_wrap(~state_region)
 
 commute_wide_pop %>% 
   ggplot(aes(x = walk, y = bike, color = state_region, size = population)) +
-  geom_point(alpha = 0.4) 
-
+  geom_point(alpha = 0.4) +
+  facet_wrap(~state_region)
 
 commute_wide_pop %>% 
   filter(city_size == "Medium") %>% 
   ggplot(aes(x = walk, y = bike, color = state_region, size = population)) +
-  geom_point(alpha = 0.4) 
+  geom_point(alpha = 0.4) +
+  facet_wrap(~state_region)
+
+commute_wide_pop %>% 
+  mutate(city_size_bin = case_when(
+    population < 200000 ~ "~100k - 200k",
+    population >= 200000 & population < 500000 ~ "200k - 500k",
+    population >= 500000 & population < 1000000 ~ "500k - 1M",
+    population >= 1000000 ~ "Over 1M",
+    TRUE ~ "< ~100k"
+  )) %>% 
+  ggplot(aes(x = bike_walk, y = city_size_bin, color = state_region, fill = state_region)) +
+  geom_density_ridges(scale = 0.9, alpha = 0.4, jittered_points = TRUE)
+
+commute_wide_pop %>% 
+  mutate(city_size_bin = case_when(
+    population < 200000 ~ "~100k - 200k",
+    population >= 200000 & population < 500000 ~ "200k - 500k",
+    population >= 500000 & population < 1000000 ~ "500k - 1M",
+    population >= 1000000 ~ "Over 1M",
+    TRUE ~ "< ~100k"
+  )) %>% 
+  ggplot(aes(x = bike_walk, y = state_region, fill = city_size_bin, color = city_size_bin)) +
+  geom_density_ridges(scale = 0.9, alpha = 0.2, jittered_points = TRUE)
+
+commute_wide_pop %>% 
+  mutate(city_size_bin = case_when(
+    population < 200000 ~ "~100k - 200k",
+    population >= 200000 & population < 500000 ~ "200k - 500k",
+    population >= 500000 & population < 1000000 ~ "500k - 1M",
+    population >= 1000000 ~ "Over 1M",
+    TRUE ~ "< ~100k"
+  )) %>% 
+  ggplot(aes(x = bike_walk, y = state_region, fill = city_size_bin, color = city_size_bin)) +
+  geom_jitter(alpha = 0.4)
+
+commute_wide_pop %>% 
+  mutate(city_size_bin = case_when(
+    population < 200000 ~ "~100k - 200k",
+    population >= 200000 & population < 500000 ~ "200k - 500k",
+    population >= 500000 & population < 1000000 ~ "500k - 1M",
+    population >= 1000000 ~ "Over 1M",
+    TRUE ~ "< ~100k"
+  ),
+  population = case_when(
+    is.na(population) ~ 50000,
+    TRUE ~ population
+  )
+  ) %>% 
+  ggplot(aes(x = bike_walk, y = city_size_bin, color = state_region, size = population)) +
+  geom_jitter(alpha = .7) +
+  theme_minimal()
 
 
+commute_wide_pop %>% 
+  mutate(
+    city_size_bin = case_when(
+      population < 200000 ~ "~100k - 200k",
+      population >= 200000 & population < 500000 ~ "200k - 500k",
+      population >= 500000 & population < 1000000 ~ "500k - 1M",
+      population >= 1000000 ~ "Over 1M",
+      TRUE ~ "< ~100k"
+      ),
+    population = case_when(
+      is.na(population) ~ 50000,
+      TRUE ~ population
+      )
+    ) %>%
+  ggplot(aes(x = bike_walk, y = city_size_bin, color = state_region, size = population)) +
+  geom_jitter(alpha = .7) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  facet_wrap(~state_region)
+
+
+commute_chart_data <- commute_wide_pop %>% 
+  mutate(
+    city_size_bin = case_when(
+      population < 200000 ~ "~100k - 200k",
+      population >= 200000 & population < 500000 ~ "200k - 500k",
+      population >= 500000 & population < 1000000 ~ "500k - 1M",
+      population >= 1000000 ~ "Over 1M",
+      TRUE ~ "< ~100k"
+      ),
+    population = case_when(
+      is.na(population) ~ 50000,
+      TRUE ~ population
+      )
+    )
+commute_chart_data %>%
+  ggplot(aes(x = bike_walk, y = city_size_bin, fill = state_region, label = paste(word(city_state, 1), word(city_state, -1)))) +
+  geom_density_ridges(alpha = .6, size = 0.2, jittered_points = FALSE) +
+  geom_label_repel(data = filter(commute_chart_data,
+                                (bike_walk > 33 & city_size_bin == "< ~100k")|
+                                  (bike_walk > 25 & city_size_bin == "~100k - 200k") |
+                                  (bike_walk > 16 & city_size_bin == "500k - 1M")),
+                   force = 1.5,
+                   show_guide = FALSE) +
+  theme_minimal(base_family = "Ubuntu Condensed") +
+  theme(legend.position = "bottom") +
+  scale_x_continuous(labels = function(x) paste0(x, "%")) +
+  scale_y_discrete(labels = function(x) paste0(x, " people")) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(y = NULL, 
+       x = NULL,
+       title = "Active Commutes: College towns shine",
+       subtitle = "Percentage of people who commute by biking or walking in more than 1,400 US cities,
+       grouped by city size and region",
+       caption = "@alejagerosa. Inspired by #TidyTuesday.",
+       fill = NULL)
 
 
 
