@@ -396,7 +396,8 @@ commute_chart_data %>%
        subtitle = "Percentage of people who commute by biking or walking in more than 1,400 US cities,
        grouped by city size and region",
        caption = "@alejagerosa. Inspired by #TidyTuesday.",
-       fill = NULL)
+       fill = NULL) 
+ggsave("bike_and_walk.jpg", last_plot())
 
 
 
