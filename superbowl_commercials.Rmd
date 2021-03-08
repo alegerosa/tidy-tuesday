@@ -1,0 +1,91 @@
+---
+title: "Superbowl Commercials"
+author: "Alejandra Gerosa"
+date: "3/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages and data, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(skimr)
+library(janitor)
+
+tuesdata <- tidytuesdayR::tt_load(2021, week = 10)
+youtube <- tuesdata$youtube
+
+
+```
+
+```{r explore}
+skim(youtube)
+tabyl(youtube, like_count) %>% 
+  arrange(desc(n))
+
+
+
+```
+
+```{r brands}
+
+youtube %>% 
+  ggplot(aes(brand)) + 
+  geom_bar()
+
+```
+
+So, the two brands with the most entries in this dataset are Budweiser and Bud Light. How are the two brands different from each other? Let's see if there are differences in what types of attributes are found in their superbowl commercials.
+
+```{r uses sex}
+brand_set <- c("Bud Light", "Budweiser")
+
+youtube %>%
+ filter(brand %in% brand_set) %>% 
+  ggplot(aes(brand, fill = use_sex)) +
+  geom_bar(position = "fill")
+
+```
+So, Bud Light uses sex more than Budweiser.
+
+Lets see first if there are significant difference btw Budweiser and Bud Light by year. (Are there truly two brands in the same marketplace, or did one of them give space to the other at some point)
+
+```{r brand_set by year}
+
+youtube %>% 
+  filter(brand %in% brand_set) %>% 
+  ggplot(aes(brand, fill = brand)) + 
+  geom_bar() +
+  facet_wrap("year")
+
+```
+Whatever, it seems like there's more Bud Light early on, but no super significant switch.
+
+Now let's see if I can rework the dataset to be able to facet by "attribute"
+
+```{r attributes}
+attributes <- c(
+  "funny",
+  "patriotic",
+  "celebrity",
+  "danger",
+  "animals",
+  "use_sex"
+)
+
+by_attribute <- youtube %>% 
+  filter(brand %in% brand_set) %>% 
+  pivot_longer(all_of(attributes), names_to = "attribute")
+
+by_attribute %>% ggplot(aes(brand, fill = value)) +
+  geom_bar(position = "fill") +
+  facet_wrap("attribute") +
+  ggtitle("Budweiser is patriotic, Bud Light is funny")
+  
+
+```
+Next step is to make it look good.
+
+
