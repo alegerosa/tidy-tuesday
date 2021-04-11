@@ -88,5 +88,5 @@ by_attribute %>% ggplot(aes(brand, fill = value)) +
 ```
 Next step is to make it look good.
 
-sidenote: adding  line to test something.
+
 
